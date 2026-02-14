@@ -7,9 +7,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
 // --- Security Configuration ---
 // Hardcoded ZPK for demonstration (in production, use KMS or secure env vars)
-const SERVER_ZPK_HEX = '0123456789ABCDEFFEDCBA9876543210'; 
+// AES-256 Key (32 bytes = 64 hex chars)
+const SERVER_ZPK_HEX = '000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F'; 
 
 // Generate RSA Key Pair for shielding sensitive data (PIN/PAN) in transit from client
 const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -38,14 +40,6 @@ function getIso0Fields(pin, pan) {
     }
     
     return { pinField, panField, clearBlock };
-}
-
-function processKey(keyHex) {
-    let key = Buffer.from(keyHex, 'hex');
-    if (key.length === 16) {
-        key = Buffer.concat([key, key.slice(0, 8)]);
-    }
-    return key;
 }
 
 // Endpoint to provide public key to client
@@ -78,12 +72,14 @@ app.post('/api/encrypt', (req, res) => {
             return res.status(400).json({ error: "Invalid payload: missing pin or pan" });
         }
 
-        // 2. Encrypt PIN Block using Server-side ZPK
+        // 2. Encrypt PIN Block using Server-side ZPK (AES-256)
         const { pinField, panField, clearBlock } = getIso0Fields(pin, pan);
         
-        const key = processKey(SERVER_ZPK_HEX);
-        const cipher = crypto.createCipheriv('des-ede3', key, null);
-        cipher.setAutoPadding(false);
+        const key = Buffer.from(SERVER_ZPK_HEX, 'hex');
+        const cipher = crypto.createCipheriv('aes-256-ecb', key, null);
+        // AES block size is 16 bytes. ISO-0 block is 8 bytes.
+        // We use default padding (PKCS#7) which usually adds bytes to reach 16 bytes.
+        // cipher.setAutoPadding(true); // Default is true
         
         const encryptedBlock = Buffer.concat([cipher.update(clearBlock), cipher.final()]);
         
@@ -103,7 +99,7 @@ app.post('/api/decrypt', (req, res) => {
     try {
         const { encryptedBlockHex, pan } = req.body;
         
-        const key = processKey(SERVER_ZPK_HEX);
+        const key = Buffer.from(SERVER_ZPK_HEX, 'hex');
         
         if (!encryptedBlockHex || !pan) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -113,8 +109,8 @@ app.post('/api/decrypt', (req, res) => {
         const panField = "0000" + panBody;
         const bufPan = Buffer.from(panField, 'hex');
 
-        const decipher = crypto.createDecipheriv('des-ede3', key, null);
-        decipher.setAutoPadding(false);
+        const decipher = crypto.createDecipheriv('aes-256-ecb', key, null);
+        // decipher.setAutoPadding(true); // Default is true
         
         const encryptedBuf = Buffer.from(encryptedBlockHex, 'hex');
         const decryptedBlock = Buffer.concat([decipher.update(encryptedBuf), decipher.final()]);

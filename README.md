@@ -1,6 +1,6 @@
 # ISO 9564-1 Format 0 PIN Block Tool
 
-A secure, full-stack application for generating and visualizing ISO-0 PIN Blocks using RSA-OAEP and Triple DES encryption.
+A secure, full-stack application for generating and visualizing ISO-0 PIN Blocks using RSA-OAEP and AES-256 encryption.
 
 ![ISO-0](https://m.media-amazon.com/images/I/41DWA+bF7-L.png)
 
@@ -9,7 +9,7 @@ This tool allows financial developers to simulate the creation of an ISO 9564-1 
 
 **Key Features:**
 - **Secure PIN Entry**: PINs and PANs are encrypted on the client using **RSA-OAEP (SHA-256)** before transmission.
-- **Server-Side ZPK**: The Triple DES Zone PIN Key is stored securely on the backend.
+- **Server-Side ZPK**: The **AES-256** Zone PIN Key is stored securely on the backend.
 - **ISO-0 Logic**: Implements standard XOR logic between the PIN Field and PAN Field.
 - **Visual Feedback**: Displays intermediate fields (PIN Field, PAN Field, Clear Block) and the final Encrypted PIN Block.
 
@@ -18,7 +18,7 @@ This tool allows financial developers to simulate the creation of an ISO 9564-1 
 - **Backend**: Node.js, Express, `crypto` module (OpenSSL)
 - **Encryption**:
   - **Transport**: RSA-2048 with OAEP-SHA256 padding.
-  - **PIN Block**: Triple DES (3DES/TDES) in ECB mode (implied by PIN Block standards, often handled via variants).
+  - **PIN Block**: **AES-256** (Replacing deprecated Triple DES). Note: Standard ISO-0 is 8 bytes; this tool encrypts the 8-byte block using AES-256 (ECB), resulting in a 16-byte output.
 
 ## Security Architecture
 
@@ -28,7 +28,7 @@ This tool allows financial developers to simulate the creation of an ISO 9564-1 
     - Hash: `SHA-256`
 3.  **Transmission**: The encrypted binary blob is Base64 encoded and sent to `POST /api/encrypt`.
 4.  **Decryption**: The Server decrypts the payload using its **Private Key**.
-5.  **processing**: The Server constructs the Clear PIN Block and encrypts it using the stored **ZPK** (Triple DES).
+5.  **processing**: The Server constructs the Clear PIN Block and encrypts it using the stored **ZPK** (AES-256).
 6.  **Response**: The Server returns the final Encrypted PIN Block and intermediate steps for educational visualization.
 
 ## Setup & Installation
